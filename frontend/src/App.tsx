@@ -1,6 +1,80 @@
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
 import Login from "./Login";
 import Register from "./Register";
+import OnboardingFlow from "./onboarding/OnboardingFlow";
+import Dashboard from "./Dashboard";
+import PosLogin from "./PosLogin";
+import PosTerminal from "./PosTerminal";
+import Checkout from "./Checkout";
+import KitchenPair from "./KitchenPair";
+import KitchenDisplay from "./KitchenDisplay";
+import { useAuth } from "./context/AuthContext";
+
+function ProtectedRoute({
+  children,
+  allowedRoles,
+  allowedModes,
+  redirectTo = "/login",
+}: {
+  children: React.ReactNode;
+  allowedRoles?: Array<"ADMIN" | "MANAGER" | "CASHIER" | "KITCHEN">;
+  allowedModes?: Array<"dashboard" | "pos" | "kitchen">;
+  redirectTo?: string;
+}) {
+  const { isAuthenticated, user, isLoading, mode } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-[#0b1b3d]">LOADING...</div>;
+
+  if (!isAuthenticated) {
+    return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  if (allowedModes && mode && !allowedModes.includes(mode)) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  if (user && mode === "dashboard" && !user.onboardingCompleted) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function OnboardingRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-[#0b1b3d]">LOADING...</div>;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user && user.onboardingCompleted) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function PublicRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user, isLoading, mode } = useAuth();
+
+  if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-[#0b1b3d]">LOADING...</div>;
+
+  if (isAuthenticated && user) {
+    if (mode === "pos") return <Navigate to="/pos" replace />;
+    if (mode === "kitchen") return <Navigate to="/kitchen" replace />;
+    if (user.onboardingCompleted) return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 function Landing() {
   return (
@@ -583,9 +657,94 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/signup" element={<Register />} />
+      <Route 
+        path="/login" 
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        } 
+      />
+      <Route
+        path="/pos-login"
+        element={
+          <PublicRoute>
+            <PosLogin />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/kitchen/pair"
+        element={
+          <PublicRoute>
+            <KitchenPair />
+          </PublicRoute>
+        }
+      />
+      <Route 
+        path="/register" 
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/signup" 
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        } 
+      />
+      <Route 
+        path="/onboarding" 
+        element={
+          <OnboardingRoute>
+            <OnboardingFlow />
+          </OnboardingRoute>
+        } 
+      />
+      <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute allowedModes={["dashboard"]} allowedRoles={["ADMIN", "MANAGER"]}>
+            <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route
+        path="/pos"
+        element={
+          <ProtectedRoute
+            allowedModes={["pos"]}
+            allowedRoles={["CASHIER", "ADMIN", "MANAGER"]}
+            redirectTo="/pos-login"
+          >
+            <PosTerminal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/checkout"
+        element={
+          <ProtectedRoute
+            allowedModes={["pos"]}
+            allowedRoles={["CASHIER", "ADMIN", "MANAGER"]}
+            redirectTo="/pos-login"
+          >
+            <Checkout />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/kitchen"
+        element={
+          <ProtectedRoute allowedModes={["kitchen"]} allowedRoles={["KITCHEN"]} redirectTo="/kitchen/pair">
+            <KitchenDisplay />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

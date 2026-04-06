@@ -54,10 +54,11 @@ model User {
   passwordHash String?
   pinHash      String?
   role         UserRole      @default(CASHIER)
-  isActive     Boolean       @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  isActive            Boolean       @default(true)
+  onboardingCompleted Boolean       @default(false)
+  lastLoginAt         DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
   bills        Bill[]        @relation("CashierBills")
   invitesSent  InviteToken[] @relation("InvitedBy")
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
@@ -121,6 +122,7 @@ model MenuItem {
   name           String         @db.VarChar(60)
   description    String?        @db.VarChar(200)
   priceInCents   Int
+  imageUrl       String?        // URL to uploaded or external image
   sortOrder      Int            @default(0)
   isActive       Boolean        @default(true)
   trackInventory Boolean        @default(false)
@@ -295,6 +297,19 @@ model Payment {
   bill              Bill          @relation(fields: [billId], references: [id])
 
   @@map("payments")
+}
+
+model Otp {
+  id         String   @id @default(cuid())
+  identifier String   // Email or Mobile
+  codeHash   String   // Hashed OTP
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([identifier])
+  @@map("otps")
 }
 
 model SmsLog {
