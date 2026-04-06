@@ -1,12 +1,61 @@
 import { ArrowLeft, BriefcaseBusiness, Monitor } from "lucide-react";
+import { StaffInviteRow } from "../OnboardingFlow";
+import { isValidEmail } from "../validation";
 
 interface StaffTerminalsStepProps {
   onBack: () => void;
   onNext: () => void;
   onSkip: () => void;
+  invites: StaffInviteRow[];
+  onInvitesChange: (rows: StaffInviteRow[]) => void;
 }
 
-export function StaffTerminalsStep({ onBack, onNext, onSkip }: StaffTerminalsStepProps) {
+export function StaffTerminalsStep({
+  onBack,
+  onNext,
+  onSkip,
+  invites,
+  onInvitesChange,
+}: StaffTerminalsStepProps) {
+  const updateInvite = (id: string, field: keyof StaffInviteRow, value: string) => {
+    onInvitesChange(
+      invites.map((invite) =>
+        invite.id === id
+          ? {
+              ...invite,
+              [field]: value,
+            }
+          : invite,
+      ),
+    );
+  };
+
+  const sendInvite = (id: string) => {
+    onInvitesChange(
+      invites.map((invite) =>
+        invite.id === id
+          ? {
+              ...invite,
+              status: 'sent',
+            }
+          : invite,
+      ),
+    );
+  };
+
+  const addInviteRow = () => {
+    onInvitesChange([
+      ...invites,
+      {
+        id: crypto.randomUUID(),
+        name: '',
+        email: '',
+        role: '',
+        status: 'idle',
+      },
+    ]);
+  };
+
   return (
     <section>
       <h1 className="text-[34px] sm:text-[52px] font-extrabold text-[#0b1324] leading-[1.05] tracking-[-0.02em]">
@@ -23,35 +72,55 @@ export function StaffTerminalsStep({ onBack, onNext, onSkip }: StaffTerminalsSte
             <h2 className="text-[20px] font-bold text-[#111827]">Invite Your Staff</h2>
           </div>
 
-          <div className="grid md:grid-cols-[1fr_1fr_130px_110px] gap-3">
-            <input
-              type="text"
-              placeholder="e.g. Alex Rivera"
-              className="h-10 rounded-md border border-slate-200 bg-[#f8fafc] px-3 text-[13px]"
-            />
-            <input
-              type="email"
-              placeholder="alex@tillcloud.com"
-              className="h-10 rounded-md border border-slate-200 bg-[#f8fafc] px-3 text-[13px]"
-            />
-            <select className="h-10 rounded-md border border-slate-200 bg-[#f8fafc] px-3 text-[13px]">
-              <option>Cashier</option>
-              <option>Admin</option>
-              <option>Kitchen</option>
-            </select>
-            <button type="button" className="h-10 rounded-full bg-[#07142a] text-white text-[12px] font-semibold">
-              Send Invite
-            </button>
+          <div className="space-y-3">
+            {invites.map((invite) => {
+              const canSend = isValidEmail(invite.email) && invite.role !== '';
+              return (
+                <div key={invite.id} className="grid md:grid-cols-[1fr_1fr_130px_110px] gap-3">
+                  <input
+                    type="text"
+                    value={invite.name}
+                    onChange={(event) => updateInvite(invite.id, 'name', event.target.value)}
+                    placeholder="e.g. Alex Rivera"
+                    className="h-10 rounded-md border border-slate-200 bg-[#f8fafc] px-3 text-[13px]"
+                  />
+                  <div>
+                    <input
+                      type="email"
+                      value={invite.email}
+                      onChange={(event) => updateInvite(invite.id, 'email', event.target.value)}
+                      placeholder="alex@tillcloud.com"
+                      className="h-10 w-full rounded-md border border-slate-200 bg-[#f8fafc] px-3 text-[13px]"
+                    />
+                    {invite.email && !isValidEmail(invite.email) && (
+                      <p className="mt-1 text-[10px] font-semibold text-rose-600">Enter a valid email address.</p>
+                    )}
+                  </div>
+                  <select
+                    value={invite.role}
+                    onChange={(event) => updateInvite(invite.id, 'role', event.target.value)}
+                    className="h-10 rounded-md border border-slate-200 bg-[#f8fafc] px-3 text-[13px]"
+                  >
+                    <option value="">Select Role</option>
+                    <option value="CASHIER">Cashier</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="ADMIN">Admin</option>
+                    <option value="KITCHEN">Kitchen</option>
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!canSend}
+                    onClick={() => sendInvite(invite.id)}
+                    className="h-10 rounded-full bg-[#07142a] text-white text-[12px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {invite.status === 'sent' ? '✓ Sent' : 'Send Invite'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="mt-4 grid md:grid-cols-[1fr_1fr_130px_110px] gap-3 items-center text-[13px]">
-            <div className="text-slate-700">Jordan Smith</div>
-            <div className="text-slate-700">jordan@tillcloud.com</div>
-            <div className="text-[#0b79a5] font-medium">Admin</div>
-            <div className="text-slate-400">✓ Sent</div>
-          </div>
-
-          <button type="button" className="mt-4 text-[13px] font-semibold text-[#1fa8d8]">
+          <button type="button" onClick={addInviteRow} className="mt-4 text-[13px] font-semibold text-[#1fa8d8]">
             + Add Staff
           </button>
         </div>

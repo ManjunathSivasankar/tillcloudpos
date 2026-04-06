@@ -1,42 +1,121 @@
 import {
+  BarChart3,
   Bell,
-  BookOpen,
-  CircleCheck,
+  CheckCircle2,
+  ChevronDown,
   ClipboardList,
+  Cloud,
+  Copy,
+  ExternalLink,
+  FileText,
+  HelpCircle,
   Home,
   LayoutGrid,
+  Loader2,
   LogOut,
-  Receipt,
+  MoreVertical,
+  Package,
+  Plus,
   Search,
   Settings,
-  ShoppingCart,
-  UserPlus,
+  ShoppingBag,
+  Store,
+  Trash2,
+  User,
+  Users,
+  Utensils,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "./context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
+import api from "./services/api";
+import MenuManagement from "./MenuManagement";
+import StaffManagementPage from "./StaffManagementPage";
+import StockListPage from "./StockListPage";
 
-function StatCard({ title, value, tag }: { title: string; value: string; tag: string }) {
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: ReactNode;
+  trend?: string;
+  statusLabel?: string;
+  statusType?: "success" | "warning" | "error" | "info";
+}
+
+function StatCard({
+  title,
+  value,
+  icon,
+  trend,
+  statusLabel,
+  statusType = "success",
+}: StatCardProps) {
+  const getStatusStyles = () => {
+    switch (statusType) {
+      case "success":
+        return "bg-emerald-50 text-emerald-600";
+      case "error":
+        return "bg-rose-50 text-rose-600";
+      case "warning":
+        return "bg-amber-50 text-amber-600";
+      default:
+        return "bg-blue-50 text-blue-600";
+    }
+  };
+
   return (
-    <div className="rounded-[12px] bg-white border border-slate-200 p-4">
-      <div className="text-[10px] text-slate-400 font-semibold">{tag}</div>
-      <div className="mt-4 text-[32px] font-bold text-[#0f172a] leading-none">{value}</div>
-      <div className="mt-2 text-[13px] text-slate-500">{title}</div>
+    <div className="bg-white rounded-[20px] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+      <div className="flex justify-between items-start mb-4">
+        <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#0c1424] group-hover:text-white transition-colors duration-300">
+          {icon}
+        </div>
+        {trend && (
+          <div
+            className={`px-2 py-1 rounded-full text-[11px] font-bold ${getStatusStyles()}`}
+          >
+            {trend}
+          </div>
+        )}
+        {statusLabel && (
+          <div
+            className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusStyles()}`}
+          >
+            {statusLabel}
+          </div>
+        )}
+      </div>
+      <div>
+        <div className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+          {title}
+        </div>
+        <div className="text-[28px] font-black text-[#0c1424] mt-1 tracking-tight">
+          {value}
+        </div>
+      </div>
     </div>
   );
 }
 
-function QuickAction({ title, subtitle, icon }: { title: string; subtitle: string; icon: ReactNode }) {
+function SidebarIcon({
+  icon: Icon,
+  active = false,
+  onClick,
+}: {
+  icon: any;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
-      type="button"
-      className="w-full rounded-[12px] bg-white border border-slate-200 p-4 text-left flex items-center gap-3 hover:border-[#9adff6] transition"
+      onClick={onClick}
+      className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all duration-200 ${
+        active
+          ? "bg-[#1e293b] text-[#5dc7ec] shadow-lg shadow-black/20"
+          : "text-slate-400 hover:text-white hover:bg-[#1e293b]/50"
+      }`}
     >
-      <span className="h-9 w-9 rounded-lg bg-[#f1f6fc] inline-flex items-center justify-center text-slate-700">{icon}</span>
-      <span>
-        <div className="text-[14px] font-bold text-[#111827]">{title}</div>
-        <div className="text-[11px] text-slate-500">{subtitle}</div>
-      </span>
+      <Icon size={18} strokeWidth={active ? 2.5 : 2} />
     </button>
   );
 }
@@ -44,134 +123,632 @@ function QuickAction({ title, subtitle, icon }: { title: string; subtitle: strin
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [terminalLaunched, setTerminalLaunched] = useState<boolean>(() => {
+    return localStorage.getItem("terminalLaunched") === "true";
+  });
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [currentView, setCurrentView] = useState<'home' | 'menu' | 'staff' | 'orders' | 'inventory' | 'customers' | 'analytics' | 'settings'>('home');
+  const [realStaff, setRealStaff] = useState<any[]>([]);
+
+  const fetchStaff = async () => {
+    if (!user?.restaurantId) {
+      return;
+    }
+    try {
+      const response = await api.get(`/users/${user.restaurantId}`);
+      setRealStaff(response.data);
+    } catch (err) {
+      console.error("Failed to fetch staff:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (terminalLaunched) {
+      void fetchStaff();
+    }
+  }, [terminalLaunched, user?.restaurantId]);
+
+  const handleDeleteUser = async (userId: string) => {
+    if (userId === user?.id) {
+      alert("You cannot remove yourself!");
+      return;
+    }
+    
+    if (!window.confirm("Are you sure you want to remove this user? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/users/user/${userId}`);
+      setRealStaff(prev => prev.filter(u => u.id !== userId));
+    } catch (err) {
+      alert("Failed to remove user. Please try again.");
+    }
+  };
+
+  const handleLaunchTerminal = () => {
+    setIsLaunching(true);
+    setTimeout(() => {
+      setTerminalLaunched(true);
+      localStorage.setItem("terminalLaunched", "true");
+      setIsLaunching(false);
+    }, 1500);
+  };
 
   const handleLogout = () => {
-    logout();
+    void logout();
     navigate("/login");
   };
 
-  const restaurantName = user?.email?.split('@')[0] || "Your Bistro"; // Fallback if name not in user object
-  return (
-    <div className="min-h-screen w-full bg-[#eef3f9] text-slate-900">
-      <div className="min-h-screen w-full grid grid-cols-[84px_minmax(0,1fr)] gap-4 p-3 sm:p-4 lg:p-5">
-        <aside className="sticky top-3 sm:top-4 lg:top-5 h-[calc(100vh-1.5rem)] sm:h-[calc(100vh-2rem)] lg:h-[calc(100vh-2.5rem)] rounded-[20px] bg-[#07142a] text-white py-4 px-2 flex flex-col items-center gap-5 shadow-[0_20px_60px_rgba(7,20,42,0.25)]">
-          <div className="h-9 w-9 rounded-lg bg-[#0f2749] border border-[#3cc5f2]/30 flex items-center justify-center text-[#5cc7eb]">☁</div>
-          {[Home, LayoutGrid, ShoppingCart, ClipboardList, Receipt, BookOpen, Settings].map((Icon, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`h-10 w-10 rounded-xl inline-flex items-center justify-center ${
-                i === 0 ? "bg-[#12335e] text-[#5cc7eb]" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <Icon size={16} />
-            </button>
-          ))}
-          <button 
-            type="button" 
-            onClick={handleLogout}
-            className="mt-auto h-10 w-10 rounded-xl inline-flex items-center justify-center text-slate-400 hover:text-white"
-          >
-            <LogOut size={16} />
-          </button>
+  const salesData = [
+    { day: "MON", value: 40 },
+    { day: "TUE", value: 65 },
+    { day: "WED", value: 90, active: true },
+    { day: "THU", value: 60 },
+    { day: "FRI", value: 75 },
+    { day: "SAT", value: 55 },
+    { day: "SUN", value: 80 },
+  ];
+
+  const staff = realStaff.length > 0 ? realStaff.map(u => ({
+    id: u.id,
+    name: u.fullName,
+    role: u.role,
+    station: u.role === 'KITCHEN' ? 'Kitchen' : u.role === 'CASHIER' ? 'Terminal 01' : 'Admin Portal',
+    checkIn: new Date(u.createdAt).toLocaleDateString(),
+    status: u.isActive ? "Active" : "Inactive",
+  })) : [
+    {
+      id: "demo-1",
+      name: "Courtney Henry",
+      role: "Manager",
+      station: "Front Desk",
+      checkIn: "08:00 AM",
+      status: "Active",
+    },
+    // ... more demo users if needed
+  ];
+
+  if (!terminalLaunched) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans flex text-[14px]">
+        {/* Sidebar */}
+        <aside className="w-[84px] bg-[#0c1424] fixed top-0 bottom-0 left-0 py-8 flex flex-col items-center z-50">
+          <div className="h-12 w-12 bg-gradient-to-br from-[#1e293b] to-[#0c1424] rounded-2xl flex items-center justify-center text-[#5dc7ec] mb-12 shadow-xl shadow-black/40 ring-1 ring-white/10">
+            <Cloud size={24} strokeWidth={2.5} />
+          </div>
+
+          <nav className="flex flex-col gap-6">
+            <SidebarIcon icon={Home} active />
+            <SidebarIcon icon={LayoutGrid} />
+            <SidebarIcon icon={Utensils} />
+            <SidebarIcon icon={Users} />
+            <SidebarIcon icon={Package} />
+            <SidebarIcon icon={User} />
+            <SidebarIcon icon={BarChart3} />
+            <SidebarIcon icon={Settings} />
+          </nav>
+
+          <div className="mt-auto flex flex-col gap-6 items-center">
+            <div className="h-10 w-10 rounded-full bg-slate-800 border border-white/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-[#5dc7ec] transition-all">
+              <img
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "Admin")}&background=0c1424&color=5dc7ec`}
+                alt="Avatar"
+              />
+            </div>
+            <SidebarIcon icon={LogOut} onClick={handleLogout} />
+          </div>
         </aside>
 
-        <main className="min-w-0 w-full pr-0 sm:pr-1 lg:pr-2">
-          <header className="h-14 sm:h-16 rounded-[18px] bg-white border border-slate-200 px-4 sm:px-6 flex items-center justify-between shadow-[0_8px_30px_rgba(15,23,42,0.04)]">
-            <div className="font-bold text-[#0f172a] uppercase tracking-wide">{user?.fullName || 'Admin'} | {restaurantName}</div>
+        {/* Main Content Area */}
+        <main className="flex-1 ml-[84px] p-8 max-w-[1600px] mx-auto w-full">
+          {/* Header */}
+          <header className="flex items-center justify-between mb-8 gap-8">
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex h-10 w-[230px] rounded-full border border-slate-200 bg-[#f8fafc] px-3 items-center text-slate-400 text-[12px]">
-                <Search size={13} className="mr-2" /> Search orders, menu...
-              </div>
-              <button type="button" className="h-9 w-9 rounded-full bg-[#f8fafc] border border-slate-200 inline-flex items-center justify-center text-slate-500">
-                <Bell size={13} />
+              <h2 className="text-xl font-black text-[#0c1424]">
+                {user?.businessName || "Ocean Blue Bistro"}
+              </h2>
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[9px] font-black uppercase text-[#0c1424]">
+                Admin
+              </span>
+            </div>
+
+            <div className="flex-1 max-w-[400px] relative group mx-auto">
+              <Search
+                size={14}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0c1424] transition-colors"
+              />
+              <input
+                type="text"
+                placeholder="Search orders, menu, staff..."
+                className="w-full h-10 pl-11 pr-6 rounded-xl bg-white border border-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0c1424]/5 transition-all text-[13px]"
+              />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button className="text-slate-400 hover:text-[#0c1424] transition-colors">
+                <Bell size={18} />
               </button>
-              <div className="h-9 w-9 rounded-full bg-[#1f4d7e]" />
+              <button className="text-slate-400 hover:text-[#0c1424] transition-colors">
+                <HelpCircle size={18} />
+              </button>
+              <div className="h-10 w-10 rounded-full border border-slate-200 overflow-hidden shadow-sm">
+                <img
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "Admin")}&background=f3f4f6&color=0c1424`}
+                  alt="Avatar"
+                />
+              </div>
             </div>
           </header>
 
-          <section className="mt-4 rounded-[22px] bg-gradient-to-r from-[#06132c] via-[#0f2848] to-[#164268] text-white p-5 sm:p-6 flex flex-wrap gap-4 items-center justify-between shadow-[0_20px_60px_rgba(8,22,46,0.12)]">
-            <div>
-              <h1 className="text-[28px] sm:text-[34px] font-bold leading-tight">Welcome to TillCloud, {user?.fullName || 'User'}!</h1>
-              <p className="text-[13px] text-blue-100/80 mt-1">Your account is active and ready for operations at {restaurantName}.</p>
+          {/* Hero Banner */}
+          <div className="bg-[#0c1424] rounded-[24px] p-10 text-white relative overflow-hidden mb-8 shadow-2xl shadow-black/10">
+            <div className="relative z-10">
+              <h1 className="text-[32px] font-black tracking-tight mb-2">
+                Welcome to TillCloud, {user?.businessName || "Ocean Blue Bistro"}!
+              </h1>
+              <p className="text-slate-400 font-medium">
+                Your account is active and ready for operations.
+              </p>
             </div>
-            <div className="rounded-[12px] border border-white/10 bg-black/20 px-3 py-2 text-[11px] min-w-[220px]">
-              <div className="text-blue-200">Your POS URL</div>
-              <div className="flex items-center gap-2 mt-1">
-                <span>pos.tillcloud.com/oceanblue</span>
-                <button type="button" className="h-6 px-2 rounded bg-[#4cc7f0] text-[#052743] font-bold text-[10px]">
-                  Copy
-                </button>
+
+            {/* POS Link Card */}
+            <div className="absolute right-10 top-1/2 -translate-y-1/2 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex items-center gap-4">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black uppercase tracking-widest text-[#5dc7ec]">Your POS Link</span>
+                <span className="text-sm font-bold text-slate-300">pos.tillcloud.com/{user?.businessName?.toLowerCase().replace(/\s+/g, '-')}</span>
               </div>
+              <button className="bg-[#5dc7ec] text-[#0c1424] px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-white transition-colors duration-200 flex items-center gap-2">
+                <Copy size={12} />
+                Copy
+              </button>
             </div>
-          </section>
 
-          <section className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            <StatCard tag="Today" value="0" title="Total Bills" />
-            <StatCard tag="Real-time" value="$0.00" title="Total Revenue" />
-            <StatCard tag="Live" value="0" title="Active Orders" />
-            <StatCard tag="Alert" value="0" title="Low Stock Items" />
-          </section>
+            <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-[#5dc7ec]/10 to-transparent blur-[100px] -z-0" />
+          </div>
 
-          <section className="mt-4 grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)_250px] gap-3 items-start">
-            <div className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)]">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[16px] font-bold">Setup Guide</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#dbf4ff] text-[#0b78a0] font-semibold">100% Done</span>
+          {/* Setup Metric Cards (Horizontal Small) */}
+          <div className="grid grid-cols-4 gap-6 mb-10">
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                <FileText size={18} />
               </div>
-              <div className="mt-3 space-y-2 text-[12px] text-slate-700">
+              <div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Bills</div>
+                <div className="text-2xl font-black text-[#0c1424]">0</div>
+              </div>
+              <span className="ml-auto px-2 py-0.5 rounded-full bg-slate-50 text-[9px] font-bold text-slate-400">Today</span>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                <Wallet size={18} />
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Revenue</div>
+                <div className="text-2xl font-black text-[#0c1424]">$0.00</div>
+              </div>
+              <span className="ml-auto px-2 py-0.5 rounded-full bg-slate-50 text-[9px] font-bold text-slate-400">Real-time</span>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                <ShoppingBag size={18} />
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Active Orders</div>
+                <div className="text-2xl font-black text-[#0c1424]">0</div>
+              </div>
+              <span className="ml-auto px-2 py-0.5 rounded-full bg-[#f0f9ff] text-[9px] font-bold text-[#5dc7ec]">Live</span>
+            </div>
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center gap-4">
+              <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                <Package size={18} />
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Low Stock Items</div>
+                <div className="text-2xl font-black text-[#0c1424]">0</div>
+              </div>
+              <span className="ml-auto px-2 py-0.5 rounded-full bg-rose-50 text-[9px] font-bold text-rose-400">Alert</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-12 gap-8">
+            {/* Setup Guide Card */}
+            <div className="col-span-3 bg-gradient-to-b from-[#f8fafc] to-[#eef2ff] rounded-[32px] p-6 border border-slate-200 flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-lg font-black text-[#0c1424]">Setup Guide</h3>
+                <span className="px-3 py-1 rounded-full bg-[#0c1424] text-white text-[10px] font-black tracking-widest uppercase">100% Done</span>
+              </div>
+
+              <div className="space-y-5 flex-1">
                 {[
                   "Business Profile",
                   "Tax Setup",
                   "Menu Creation",
                   "Staff & Terminals",
                   "Payment Integration",
-                ].map((item) => (
-                  <div key={item} className="flex items-center gap-2">
-                    <CircleCheck size={14} className="text-[#38c68c]" />
-                    <span>{item}</span>
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <div className="h-5 w-5 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <CheckCircle2 size={12} strokeWidth={3} />
+                    </div>
+                    <span className="text-[14px] font-bold text-slate-700">{item}</span>
                   </div>
                 ))}
               </div>
-              <button type="button" className="mt-4 h-10 w-full rounded-full bg-[#07142a] text-white text-[12px] font-semibold">
-                Launch Terminal
-              </button>
+
+              <div className="mt-10 p-5 rounded-2xl bg-white/40 border border-white/60 text-center">
+                <p className="text-[11px] font-bold text-slate-400 mb-4 uppercase tracking-widest">Ready to start trading?</p>
+                <button 
+                  onClick={handleLaunchTerminal}
+                  disabled={isLaunching}
+                  className="w-full h-11 bg-[#0c1424] text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-black/20 hover:bg-black transition-all flex items-center justify-center gap-2"
+                >
+                  {isLaunching ? (
+                    <Loader2 size={14} className="animate-spin text-[#5dc7ec]" />
+                  ) : (
+                    "Launch Terminal"
+                  )}
+                </button>
+              </div>
             </div>
 
-            <div className="rounded-[16px] border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.04)] min-w-0">
-              <div className="flex items-center justify-between">
+            {/* Sales Overview Empty State */}
+            <div className="col-span-6 bg-white rounded-[40px] border border-slate-100 p-10 flex flex-col shadow-sm">
+              <div className="flex items-center justify-between mb-10">
                 <div>
-                  <h2 className="text-[16px] font-bold">Sales Overview</h2>
-                  <div className="text-[11px] text-slate-500">Last 7 days performance</div>
+                  <h3 className="text-lg font-black text-[#0c1424]">Sales Overview</h3>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Last 7 days performance</p>
                 </div>
-                <div className="rounded-full bg-[#f4f8fc] p-1 text-[11px]">
-                  <button type="button" className="px-3 py-1 rounded-full bg-white border border-slate-200">Daily</button>
-                  <button type="button" className="px-3 py-1">Weekly</button>
+                <div className="flex gap-2">
+                  <span className="px-3 py-1 rounded-full bg-slate-50 text-[10px] font-bold text-slate-400">Daily</span>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold text-slate-400">Weekly</span>
                 </div>
               </div>
 
-              <div className="mt-8 rounded-[16px] bg-[#f7fafd] border border-slate-200 h-[280px] flex items-center justify-center text-center">
-                <div>
-                  <div className="h-16 w-16 rounded-[12px] bg-white border border-slate-200 mx-auto mb-3" />
-                  <div className="text-[18px] font-bold text-slate-700">No Sales Data Yet</div>
-                  <div className="text-[12px] text-slate-500 mt-1">Your sales data will appear here once you start taking orders.</div>
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <div className="h-48 w-48 rounded-full bg-[#f0f9ff]/50 flex items-center justify-center mb-8 relative">
+                  <div className="h-32 w-32 bg-white rounded-[24px] shadow-xl shadow-blue-500/10 flex items-center justify-center relative rotate-6">
+                     <BarChart3 className="text-[#5dc7ec]/30 h-12 w-12" />
+                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-lg border border-slate-50 flex items-center justify-center">
+                       <Plus size={14} className="text-[#0c1424]" />
+                     </div>
+                  </div>
+                  <div className="absolute top-2 right-2 h-12 w-12 bg-[#5dc7ec] rounded-full blur-[24px] opacity-20"></div>
                 </div>
+                <h4 className="text-lg font-black text-[#0c1424] mb-2">No Sales Data Yet</h4>
+                <p className="text-[13px] text-slate-400 font-medium max-w-[320px] leading-relaxed">
+                  Your sales data will appear here once you start taking orders. Connect your POS and make your first transaction.
+                </p>
               </div>
             </div>
 
-            <div>
-              <h3 className="text-[12px] font-semibold text-slate-500 mb-2 px-1">QUICK ACTIONS</h3>
-              <div className="space-y-3">
-                <QuickAction title="Open POS" subtitle="Launch your POS terminal" icon={<LayoutGrid size={15} />} />
-                <QuickAction title="Add Menu Items" subtitle="Expand your catalogue" icon={<ClipboardList size={15} />} />
-                <QuickAction title="Invite Staff" subtitle="Build your billing team" icon={<UserPlus size={15} />} />
-              </div>
+            {/* Quick Actions Card */}
+            <div className="col-span-3 flex flex-col gap-6">
+              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Quick Actions</h3>
+              
+              {[
+                { label: "Open POS", sub: "Launch your terminal", icon: Store },
+                { label: "Add Menu Items", sub: "Expand your catalogue", icon: Utensils },
+                { label: "Invite Staff", sub: "Build your bistro team", icon: Users },
+              ].map((action, idx) => (
+                <button 
+                  key={idx} 
+                  className="group bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-center gap-5"
+                >
+                  <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-[#0c1424] group-hover:text-white transition-colors duration-300">
+                    <action.icon size={20} />
+                  </div>
+                  <div>
+                    <div className="text-[15px] font-black text-[#0c1424] mb-1">{action.label}</div>
+                    <div className="text-xs text-slate-400 font-medium">{action.sub}</div>
+                  </div>
+                </button>
+              ))}
 
-              <div className="mt-3 rounded-[12px] bg-gradient-to-br from-[#d5e0ec] to-[#bccad8] h-[170px] shadow-[0_10px_25px_rgba(15,23,42,0.06)]" />
+              <div className="mt-auto bg-gradient-to-br from-slate-200 to-slate-300 h-40 rounded-[32px] relative overflow-hidden flex items-center justify-center group cursor-pointer shadow-lg shadow-blue-900/10">
+                 <div className="absolute inset-0 bg-slate-900/20 group-hover:bg-transparent transition-colors duration-500"></div>
+                 <div className="text-[40px] font-black text-white/40 tracking-tighter mix-blend-overlay">POS</div>
+                 <div className="absolute bottom-4 right-4 h-8 w-8 rounded-full bg-white flex items-center justify-center text-[#0c1424] shadow-lg">
+                    <ExternalLink size={14} />
+                 </div>
+              </div>
             </div>
-          </section>
+          </div>
         </main>
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans flex text-[14px]">
+      {/* Sidebar */}
+      <aside className="w-[84px] bg-[#0c1424] fixed top-0 bottom-0 left-0 py-8 flex flex-col items-center z-50">
+        <div className="h-12 w-12 bg-gradient-to-br from-[#1e293b] to-[#0c1424] rounded-2xl flex items-center justify-center text-[#5dc7ec] mb-12 shadow-xl shadow-black/40 ring-1 ring-white/10">
+          <Cloud size={24} strokeWidth={2.5} />
+        </div>
+
+        <nav className="flex flex-col gap-6">
+          <SidebarIcon icon={Home} active={currentView === 'home'} onClick={() => setCurrentView('home')} />
+          <SidebarIcon icon={LayoutGrid} active={currentView === 'orders'} onClick={() => setCurrentView('orders')} />
+          <SidebarIcon icon={Utensils} active={currentView === 'menu'} onClick={() => setCurrentView('menu')} />
+          <SidebarIcon icon={Users} active={currentView === 'staff'} onClick={() => setCurrentView('staff')} />
+          <SidebarIcon icon={Package} active={currentView === 'inventory'} onClick={() => setCurrentView('inventory')} />
+          <SidebarIcon icon={User} active={currentView === 'customers'} onClick={() => setCurrentView('customers')} />
+          <SidebarIcon icon={BarChart3} active={currentView === 'analytics'} onClick={() => setCurrentView('analytics')} />
+          <SidebarIcon icon={Settings} active={currentView === 'settings'} onClick={() => setCurrentView('settings')} />
+        </nav>
+
+        <div className="mt-auto flex flex-col gap-6 items-center">
+          <div className="h-10 w-10 rounded-full bg-slate-800 border border-white/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-[#5dc7ec] transition-all">
+            <img
+              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || "Admin")}&background=0c1424&color=5dc7ec`}
+              alt="Avatar"
+            />
+          </div>
+          <SidebarIcon icon={LogOut} onClick={handleLogout} />
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 ml-[84px] p-8 max-w-[1600px] mx-auto w-full">
+        {/* Header */}
+        <header className="flex items-center justify-between mb-10 gap-8">
+          <div className="relative group flex-1 max-w-[600px]">
+            <Search
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0c1424] transition-colors"
+            />
+            <input
+              type="text"
+              placeholder="Search analytics, staff, or orders..."
+              className="w-full h-12 pl-12 pr-6 rounded-2xl bg-white border border-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#0c1424]/5 focus:border-[#0c1424]/20 transition-all text-[14px]"
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button className="h-12 w-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-500 hover:text-[#0c1424] transition-all relative">
+              <Bell size={18} />
+              <span className="absolute top-3.5 right-3.5 h-2 w-2 bg-rose-500 rounded-full border-2 border-white"></span>
+            </button>
+          </div>
+        </header>
+
+        {currentView === 'home' && (
+          <>
+            {/* Dash Title */}
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <h1 className="text-[34px] font-black text-[#0c1424] leading-none tracking-tight">
+                  Admin Dashboard
+                </h1>
+                <p className="text-slate-500 mt-2 font-medium">
+                  Welcome back, {user?.fullName?.split(" ")[0] || "Alex"}. Here's
+                  what's happening at{" "}
+                  <span className="font-bold text-[#0c1424]">TILLCLOUD Central</span>{" "}
+                  today.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button className="h-11 px-6 rounded-full bg-white border border-slate-200 text-[13px] font-bold text-slate-700 hover:bg-slate-50 transition-colors inline-flex items-center gap-2">
+                  <FileText size={14} />
+                  Export Report
+                </button>
+                <button className="h-11 px-6 rounded-full bg-[#0c1424] text-white text-[13px] font-bold shadow-xl shadow-black/20 hover:bg-black transition-all inline-flex items-center gap-2">
+                  <span className="text-lg leading-none">+</span>
+                  New Order
+                </button>
+              </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <StatCard
+                title="Bills Today"
+                value="84"
+                icon={<FileText size={20} />}
+                trend="+12%"
+                statusType="success"
+              />
+              <StatCard
+                title="Revenue Today"
+                value="$2,450.00"
+                icon={<Wallet size={20} />}
+                trend="+8.4%"
+                statusType="success"
+              />
+              <StatCard
+                title="Active Orders"
+                value="12"
+                icon={<ShoppingBag size={20} />}
+                statusLabel="Active"
+                statusType="warning"
+              />
+              <StatCard
+                title="Low Stock Alerts"
+                value="3"
+                icon={<ClipboardList size={20} />}
+                statusLabel="Critical"
+                statusType="error"
+              />
+            </div>
+
+            {/* Middle Section: Chart and Peak Hour */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              {/* Sales Activity */}
+              <div className="lg:col-span-2 bg-white rounded-[28px] p-8 border border-slate-100 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-lg font-black text-[#0c1424]">
+                      Sales Activity
+                    </h3>
+                    <p className="text-[13px] text-slate-500 font-medium">
+                      Revenue distribution over the selected period
+                    </p>
+                  </div>
+                  <button className="h-10 px-4 rounded-xl bg-slate-50 border border-slate-100 text-[12px] font-bold text-slate-600 inline-flex items-center gap-2 hover:bg-slate-100 transition-colors">
+                    Last 7 Days <ChevronDown size={14} />
+                  </button>
+                </div>
+
+                <div className="h-[280px] flex items-end justify-between gap-4 px-2">
+                  {salesData.map((item) => (
+                    <div
+                      key={item.day}
+                      className="flex-1 flex flex-col items-center gap-4 group"
+                    >
+                      <div className="relative w-full flex justify-center items-end h-[220px]">
+                        <div
+                          className={`w-[42px] rounded-xl transition-all duration-500 cursor-pointer ${
+                            item.active
+                              ? "bg-[#0c1424] shadow-[0_10px_30px_rgba(12,20,36,0.3)]"
+                              : "bg-[#e2e8f0]/40 group-hover:bg-[#e2e8f0]"
+                          }`}
+                          style={{ height: `${item.value}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-black text-slate-400 tracking-wider">
+                        {item.day}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Peak Hour Card */}
+              <div className="bg-[#0c1424] rounded-[28px] p-8 text-white relative overflow-hidden shadow-2xl shadow-black/20 flex flex-col justify-between group">
+                <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-[#5dc7ec]/10 blur-[80px] -z-10 rounded-full translate-x-1/2 -translate-y-1/2" />
+                <div className="absolute bottom-0 left-0 w-[150px] h-[150px] bg-indigo-500/10 blur-[60px] -z-10 rounded-full -translate-x-1/2 translate-y-1/2" />
+
+                <div>
+                  <div className="h-8 w-[120px] rounded-full bg-white/5 border border-white/10 flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#5dc7ec] mb-6">
+                    <span className="h-2 w-2 rounded-full bg-[#5dc7ec] animate-pulse" />
+                    Smart Insight
+                  </div>
+                  <h3 className="text-2xl font-black mb-3">Peak Hour</h3>
+                  <p className="text-blue-100/60 text-[14px] leading-relaxed font-medium">
+                    Your store experiences maximum traffic during lunch hours.
+                  </p>
+                </div>
+
+                <div className="mt-8">
+                  <div className="text-[44px] font-black leading-none tracking-tight mb-2">
+                    1 PM – 2 PM
+                  </div>
+                  <div className="flex items-center gap-2 text-[#5dc7ec] text-[13px] font-bold">
+                    <BarChart3 size={14} className="rotate-90" />
+                    23 bills generated
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Staff Table */}
+            <div className="bg-white rounded-[28px] p-8 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-lg font-black text-[#0c1424]">Staff On Duty</h3>
+                  <p className="text-[13px] text-slate-500 font-medium">
+                    Currently logged-in team members
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button className="h-10 w-10 flex items-center justify-center text-slate-400 hover:text-[#0c1424] transition-colors rounded-xl hover:bg-slate-50">
+                    <Search size={18} />
+                  </button>
+                  <button className="h-10 w-10 flex items-center justify-center text-slate-400 hover:text-[#0c1424] transition-colors rounded-xl hover:bg-slate-50">
+                    <MoreVertical size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-50">
+                      <th className="text-left py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
+                        Name
+                      </th>
+                      <th className="text-left py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Role
+                      </th>
+                      <th className="text-left py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Station
+                      </th>
+                      <th className="text-left py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Check-in
+                      </th>
+                      <th className="text-left py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right pr-2">
+                        Status
+                      </th>
+                      <th className="text-right py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest pr-2">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {staff.map((person, idx) => (
+                      <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
+                        <td className="py-5 pl-2">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-[13px] font-bold text-slate-600">
+                              {person.name.split(" ").map((n: string) => n[0]).join("")}
+                            </div>
+                            <span className="text-[14px] font-bold text-[#0c1424]">
+                              {person.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-5 text-[13px] font-medium text-slate-500">
+                          {person.role}
+                        </td>
+                        <td className="py-5 text-[13px] font-medium text-slate-500">
+                          {person.station}
+                        </td>
+                        <td className="py-5 text-[13px] font-medium text-slate-500">
+                          {person.checkIn}
+                        </td>
+                        <td className="py-5 text-right pr-2">
+                          <span
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              person.status === "Active"
+                                ? "bg-emerald-50 text-emerald-600"
+                                : "bg-amber-50 text-amber-600"
+                            }`}
+                          >
+                            {person.status}
+                          </span>
+                        </td>
+                        <td className="py-5 text-right pr-2">
+                           <button
+                             onClick={() => handleDeleteUser((person as any).id)}
+                             className="h-8 w-8 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
+                             title="Remove User"
+                           >
+                             <Trash2 size={16} />
+                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {currentView === 'menu' && (
+          <MenuManagement />
+        )}
+
+        {currentView === 'staff' && (
+          <StaffManagementPage />
+        )}
+
+        {currentView === 'inventory' && (
+          <StockListPage />
+        )}
+      </main>
     </div>
   );
 }

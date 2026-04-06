@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import {
@@ -37,6 +38,51 @@ interface StepActions {
   onSkip: () => void;
   isSubmitting: boolean;
 }
+
+export type BusinessProfileData = {
+  streetAddress: string;
+  suburb: string;
+  state: string;
+  postcode: string;
+  abn: string;
+  logoUrl: string;
+  timezone: string;
+  currency: string;
+};
+
+export type TaxConfigurationData = {
+  taxMode: 'INCLUSIVE' | 'EXCLUSIVE' | 'NONE';
+  taxRate: string;
+};
+
+export type MenuCategoryData = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
+
+export type MenuItemData = {
+  id: string;
+  categoryId: string;
+  name: string;
+  price: string;
+  description: string;
+};
+
+export type StaffInviteRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: '' | 'ADMIN' | 'MANAGER' | 'CASHIER' | 'KITCHEN';
+  status: 'idle' | 'sending' | 'sent';
+};
+
+export type PaymentSetupData = {
+  paymentMode: 'TYRO' | 'CASH';
+  merchantId: string;
+  terminalId: string;
+  tyroConnected: boolean;
+};
 
 function Sidebar({ currentStep }: { currentStep: number }) {
   return (
@@ -83,8 +129,49 @@ function Sidebar({ currentStep }: { currentStep: number }) {
 export default function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfileData>({
+    streetAddress: '',
+    suburb: '',
+    state: '',
+    postcode: '',
+    abn: '',
+    logoUrl: '',
+    timezone: '(GMT+10:00) Sydney',
+    currency: 'AUD',
+  });
+  const [taxConfig, setTaxConfig] = useState<TaxConfigurationData>({
+    taxMode: 'INCLUSIVE',
+    taxRate: '10',
+  });
+  const [menuCategories, setMenuCategories] = useState<MenuCategoryData[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItemData[]>([]);
+  const [staffInvites, setStaffInvites] = useState<StaffInviteRow[]>([
+    {
+      id: crypto.randomUUID(),
+      name: '',
+      email: '',
+      role: '',
+      status: 'idle',
+    },
+  ]);
+  const [paymentSetup, setPaymentSetup] = useState<PaymentSetupData>({
+    paymentMode: 'TYRO',
+    merchantId: '',
+    terminalId: '',
+    tyroConnected: false,
+  });
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, updateOnboardingStatus, logout } = useAuth();
+
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    const stepParam = query.get('step');
+    const parsed = stepParam ? Number(stepParam) : NaN;
+    if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 5) {
+      setCurrentStep(parsed);
+    }
+  }, [location.search]);
 
   const nextStep = async () => {
     if (currentStep === 5) {
@@ -93,10 +180,14 @@ export default function OnboardingFlow() {
         await api.patch(`/users/onboarding/${user?.id}`, {
           fullName: user?.fullName, // Keep current name
           restaurantData: {
-            // Simplified for now, could collect from steps
-            streetAddress: 'Updated Address',
-            suburb: 'Sydney',
-            postcode: '2000'
+            streetAddress: businessProfile.streetAddress,
+            suburb: businessProfile.suburb,
+            state: businessProfile.state,
+            postcode: businessProfile.postcode,
+            ...(businessProfile.abn ? { abn: businessProfile.abn } : {}),
+            ...(businessProfile.logoUrl ? { logoUrl: businessProfile.logoUrl } : {}),
+            taxMode: taxConfig.taxMode,
+            taxRate: Number(taxConfig.taxRate || 0),
           }
         });
         updateOnboardingStatus(true);
@@ -131,19 +222,57 @@ export default function OnboardingFlow() {
   const currentView = useMemo(() => {
     switch (currentStep) {
       case 1:
-        return <BusinessProfileStep {...actions} />;
+        return (
+          <BusinessProfileStep
+            {...actions}
+            data={businessProfile}
+            onChange={setBusinessProfile}
+          />
+        );
       case 2:
-        return <TaxConfigurationStep {...actions} />;
+        return (
+          <TaxConfigurationStep
+            {...actions}
+            data={taxConfig}
+            onChange={setTaxConfig}
+          />
+        );
       case 3:
-        return <MenuSetupStep {...actions} />;
+        return (
+          <MenuSetupStep
+            {...actions}
+            categories={menuCategories}
+            items={menuItems}
+            onCategoriesChange={setMenuCategories}
+            onItemsChange={setMenuItems}
+          />
+        );
       case 4:
-        return <StaffTerminalsStep {...actions} />;
+        return (
+          <StaffTerminalsStep
+            {...actions}
+            invites={staffInvites}
+            onInvitesChange={setStaffInvites}
+          />
+        );
       case 5:
-        return <PaymentSetupStep {...actions} />;
+        return (
+          <PaymentSetupStep
+            {...actions}
+            data={paymentSetup}
+            onChange={setPaymentSetup}
+          />
+        );
       default:
-        return <BusinessProfileStep {...actions} />;
+        return (
+          <BusinessProfileStep
+            {...actions}
+            data={businessProfile}
+            onChange={setBusinessProfile}
+          />
+        );
     }
-  }, [currentStep]);
+  }, [currentStep, actions, businessProfile, taxConfig, menuCategories, menuItems, staffInvites, paymentSetup]);
 
   return (
     <div className="min-h-screen bg-white text-slate-900">

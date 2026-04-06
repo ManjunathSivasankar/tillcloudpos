@@ -1,11 +1,27 @@
 import { ArrowLeft, ChevronDown, Search } from "lucide-react";
+import { BusinessProfileData } from "../OnboardingFlow";
 
 interface BusinessProfileStepProps {
   onBack: () => void;
   onNext: () => void;
+  data: BusinessProfileData;
+  onChange: (data: BusinessProfileData) => void;
 }
 
-export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps) {
+export function BusinessProfileStep({ onBack, onNext, data, onChange }: BusinessProfileStepProps) {
+  const requiredReady =
+    data.streetAddress.trim() !== '' &&
+    data.suburb.trim() !== '' &&
+    data.state.trim() !== '' &&
+    data.postcode.trim() !== '';
+
+  const updateField = (field: keyof BusinessProfileData, value: string) => {
+    onChange({
+      ...data,
+      [field]: value,
+    });
+  };
+
   return (
     <section>
       <h1 className="text-[34px] sm:text-[52px] font-extrabold text-[#0b1324] leading-[1.05] tracking-[-0.02em]">
@@ -23,7 +39,10 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
               <input
                 type="text"
                 placeholder="e.g. 123 George St"
+                value={data.streetAddress}
+                onChange={(event) => updateField('streetAddress', event.target.value)}
                 className="mt-2 h-11 w-full rounded-md bg-[#f1f5fb] px-4 text-[14px] placeholder:text-slate-400 outline-none"
+                aria-label="Street Address"
               />
             </div>
 
@@ -32,7 +51,10 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
               <input
                 type="text"
                 placeholder="Sydney"
+                value={data.suburb}
+                onChange={(event) => updateField('suburb', event.target.value)}
                 className="mt-2 h-11 w-full rounded-md bg-[#f1f5fb] px-4 text-[14px] placeholder:text-slate-400 outline-none"
+                aria-label="Suburb"
               />
             </div>
 
@@ -40,7 +62,13 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
               <div>
                 <label className="text-[12px] font-semibold text-[#111827]">State</label>
                 <div className="relative mt-2">
-                  <select className="h-11 w-full appearance-none rounded-md bg-[#f1f5fb] px-4 text-[14px] text-slate-600 outline-none">
+                  <select
+                    value={data.state}
+                    onChange={(event) => updateField('state', event.target.value)}
+                    className="h-11 w-full appearance-none rounded-md bg-[#f1f5fb] px-4 text-[14px] text-slate-600 outline-none"
+                    aria-label="State"
+                  >
+                    <option value="">Select state</option>
                     <option>NSW</option>
                     <option>QLD</option>
                     <option>VIC</option>
@@ -54,7 +82,10 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
                 <input
                   type="text"
                   placeholder="2000"
+                  value={data.postcode}
+                  onChange={(event) => updateField('postcode', event.target.value)}
                   className="mt-2 h-11 w-full rounded-md bg-[#f1f5fb] px-4 text-[14px] placeholder:text-slate-400 outline-none"
+                  aria-label="Postcode"
                 />
               </div>
             </div>
@@ -66,7 +97,10 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
               <input
                 type="text"
                 placeholder="11-digit number"
+                value={data.abn}
+                onChange={(event) => updateField('abn', event.target.value)}
                 className="mt-2 h-11 w-full rounded-md bg-[#f1f5fb] px-4 text-[14px] placeholder:text-slate-400 outline-none"
+                aria-label="ABN (Optional)"
               />
             </div>
 
@@ -74,6 +108,7 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
               <label className="text-[12px] font-semibold text-[#111827]">Restaurant Logo</label>
               <button
                 type="button"
+                onClick={() => updateField('logoUrl', 'uploaded-logo.png')}
                 className="mt-2 h-[84px] w-full rounded-md border border-dashed border-slate-300 bg-[#f4f7fc] text-[12px] text-slate-500"
               >
                 Click to upload (SVG, PNG, JPG)
@@ -84,7 +119,11 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
               <div>
                 <label className="text-[12px] font-semibold text-[#111827]">Timezone</label>
                 <div className="relative mt-2">
-                  <select className="h-11 w-full appearance-none rounded-md bg-[#f1f5fb] px-3 text-[12px] text-slate-600 outline-none pr-7">
+                  <select
+                    value={data.timezone}
+                    onChange={(event) => updateField('timezone', event.target.value)}
+                    className="h-11 w-full appearance-none rounded-md bg-[#f1f5fb] px-3 text-[12px] text-slate-600 outline-none pr-7"
+                  >
                     <option>(GMT+10:00) Sydney</option>
                   </select>
                   <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -96,7 +135,7 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
                 <div className="relative mt-2">
                   <input
                     type="text"
-                    value="AUD"
+                    value={data.currency}
                     readOnly
                     className="h-11 w-full rounded-md bg-[#f1f5fb] px-4 text-[14px] text-slate-700 outline-none"
                   />
@@ -120,7 +159,9 @@ export function BusinessProfileStep({ onBack, onNext }: BusinessProfileStepProps
           <button
             type="button"
             onClick={onNext}
-            className="h-11 px-8 rounded-full bg-[#07142a] text-white text-[13px] font-semibold shadow-xl shadow-black/20"
+            disabled={!requiredReady}
+            className="h-11 px-8 rounded-full bg-[#07142a] text-white text-[13px] font-semibold shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-disabled={!requiredReady}
           >
             Next →
           </button>

@@ -1,14 +1,25 @@
 import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 
-dotenv.config();
+// Load environment variables from .env file in the backend directory
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
   const configService = app.get(ConfigService);
+  const configuredOrigins = configService.get<string>('FRONTEND_URL');
+  const allowedOrigins = configuredOrigins
+    ? configuredOrigins.split(',').map((origin) => origin.trim())
+    : true;
+
+  app.enableCors({
+    origin: allowedOrigins,
+    credentials: true,
+  });
+
   const port = configService.get<number>('PORT') || 3100;
   await app.listen(port);
 }

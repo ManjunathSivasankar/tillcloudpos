@@ -1,11 +1,38 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3100', // Change if your backend port is different
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3100',
+  withCredentials: true,
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+type TokenGetter = () => string | null;
+type RefreshHandler = () => Promise<string | null>;
+type LogoutHandler = () => void;
+
+const authState: {
+  getAccessToken: TokenGetter;
+  refreshAccessToken: RefreshHandler;
+  onLogout: LogoutHandler;
+  refreshPromise: Promise<string | null> | null;
+} = {
+  getAccessToken: () => null,
+  refreshAccessToken: async () => null,
+  onLogout: () => undefined,
+  refreshPromise: null,
+};
+
+export function configureApiAuthHandlers(handlers: {
+  getAccessToken: TokenGetter;
+  refreshAccessToken: RefreshHandler;
+  onLogout: LogoutHandler;
+}) {
+  authState.getAccessToken = handlers.getAccessToken;
+  authState.refreshAccessToken = handlers.refreshAccessToken;
+  authState.onLogout = handlers.onLogout;
+}
+
+api.interceptors.request.use(async (config) => {
+  const token = authState.getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -14,12 +41,35 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+  async (error) => {
+    const originalRequest = error.config as {
+      headers: Record<string, string>;
+      _retry?: boolean;
+      url?: string;
+    };
+
+    const requestUrl = typeof originalRequest?.url === 'string' ? originalRequest.url : '';
+    const isAuthEndpoint = requestUrl.includes('/auth/');
+
+    if (error.response?.status === 401 && !originalRequest?._retry && !isAuthEndpoint) {
+      originalRequest._retry = true;
+
+      if (!authState.refreshPromise) {
+        authState.refreshPromise = authState.refreshAccessToken();
+      }
+
+      const newAccessToken = await authState.refreshPromise;
+      authState.refreshPromise = null;
+
+      if (newAccessToken) {
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return api(originalRequest);
+      }
+
+      authState.onLogout();
     }
+
     return Promise.reject(error);
   }
 );

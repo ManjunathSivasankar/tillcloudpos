@@ -1,8 +1,11 @@
 import { Circle, TriangleAlert } from "lucide-react";
+import { TaxConfigurationData } from "../OnboardingFlow";
 
 interface TaxConfigurationStepProps {
   onBack: () => void;
   onNext: () => void;
+  data: TaxConfigurationData;
+  onChange: (data: TaxConfigurationData) => void;
 }
 
 function TaxOption({
@@ -10,15 +13,18 @@ function TaxOption({
   subtitle,
   active,
   recommended,
+  onSelect,
 }: {
   title: string;
   subtitle: string;
   active?: boolean;
   recommended?: boolean;
+  onSelect: () => void;
 }) {
   return (
     <button
       type="button"
+      onClick={onSelect}
       className={`w-full rounded-[8px] border p-3 text-left ${
         active ? "border-[#5cc7eb] bg-[#f2f8ff]" : "border-slate-200 bg-[#f8fafc]"
       }`}
@@ -40,7 +46,18 @@ function TaxOption({
   );
 }
 
-export function TaxConfigurationStep({ onBack, onNext }: TaxConfigurationStepProps) {
+export function TaxConfigurationStep({ onBack, onNext, data, onChange }: TaxConfigurationStepProps) {
+  const showTaxRateInput = data.taxMode !== 'NONE';
+  const nextEnabled = data.taxMode === 'NONE' || Number(data.taxRate || 0) > 0;
+
+  const updateMode = (taxMode: TaxConfigurationData['taxMode']) => {
+    onChange({
+      ...data,
+      taxMode,
+      taxRate: taxMode === 'NONE' ? '0' : data.taxRate || '10',
+    });
+  };
+
   return (
     <section>
       <h1 className="text-[34px] sm:text-[52px] font-extrabold text-[#0b1324] leading-[1.05] tracking-[-0.02em]">
@@ -57,27 +74,39 @@ export function TaxConfigurationStep({ onBack, onNext }: TaxConfigurationStepPro
               <TaxOption
                 title="GST included in price"
                 subtitle="The price you enter already includes GST (e.g. Australian Standard)."
-                active
+                active={data.taxMode === 'INCLUSIVE'}
                 recommended
+                onSelect={() => updateMode('INCLUSIVE')}
               />
               <TaxOption
                 title="GST added on top"
                 subtitle="GST is added on top of your set price at checkout."
+                active={data.taxMode === 'EXCLUSIVE'}
+                onSelect={() => updateMode('EXCLUSIVE')}
               />
               <TaxOption
                 title="No tax"
                 subtitle="No GST is applied. Used for tax-exempt entities."
+                active={data.taxMode === 'NONE'}
+                onSelect={() => updateMode('NONE')}
               />
             </div>
 
-            <div className="mt-6 max-w-[250px]">
-              <label className="text-[12px] font-semibold text-[#111827]">Tax Rate (%)</label>
-              <div className="mt-2 h-10 rounded-md bg-[#f1f5fb] px-4 flex items-center justify-between text-[14px] text-slate-700">
-                <span>10</span>
-                <span>%</span>
+            {showTaxRateInput && (
+              <div className="mt-6 max-w-[250px]">
+                <label className="text-[12px] font-semibold text-[#111827]">Tax Rate (%)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={data.taxRate}
+                  onChange={(event) => onChange({ ...data, taxRate: event.target.value })}
+                  className="mt-2 h-10 w-full rounded-md bg-[#f1f5fb] px-4 text-[14px] text-slate-700 outline-none"
+                  aria-label="Tax rate"
+                />
+                <p className="text-[10px] mt-2 text-slate-500">Standard Australian GST is 10%</p>
               </div>
-              <p className="text-[10px] mt-2 text-slate-500">Standard Australian GST is 10%</p>
-            </div>
+            )}
 
             <div className="mt-5 rounded-[8px] border border-[#f6de9e] bg-[#fff7df] p-3 max-w-[420px]">
               <div className="flex items-start gap-2">
@@ -119,7 +148,9 @@ export function TaxConfigurationStep({ onBack, onNext }: TaxConfigurationStepPro
           <button
             type="button"
             onClick={onNext}
-            className="h-11 px-8 rounded-full bg-[#07142a] text-white text-[13px] font-semibold shadow-xl shadow-black/20"
+            disabled={!nextEnabled}
+            className="h-11 px-8 rounded-full bg-[#07142a] text-white text-[13px] font-semibold shadow-xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-disabled={!nextEnabled}
           >
             Next →
           </button>
