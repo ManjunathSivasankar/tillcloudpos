@@ -1,6 +1,5 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from './services/api';
 import { useAuth } from './context/AuthContext';
 import { 
   ShieldCheck, 
@@ -17,9 +16,9 @@ export default function PosLogin() {
   const [pin, setPin] = useState('');
   const [terminal, setTerminal] = useState('Front Counter');
   const [rememberEmail, setRememberEmail] = useState(false);
-  const [error, setError] = useState('');
+  const [error] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { login } = useAuth();
+  useAuth();
   const navigate = useNavigate();
 
   const handlePinClick = (num: string) => {

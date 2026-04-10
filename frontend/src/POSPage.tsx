@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   BadgePercent,
-  CheckCircle2,
   Clock3,
   Plus,
   Search,
@@ -20,7 +19,6 @@ import { usePosCart } from './context/PosCartContext';
 export default function POSPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const { 
     menuItems, 
     billItems, 
@@ -30,8 +28,7 @@ export default function POSPage() {
     removeItem, 
     updateQuantity, 
     sendToKitchen, 
-    isLoading, 
-    error 
+    isLoading 
   } = usePosCart();
   
   const [toastMessage, setToastMessage] = useState('');

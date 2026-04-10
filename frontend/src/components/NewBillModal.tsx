@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   X, 
@@ -16,14 +16,12 @@ interface NewBillModalProps {
 }
 
 const OrderTypeButton = ({ 
-  type, 
   active, 
   icon: Icon, 
   title, 
   description, 
   onClick 
 }: { 
-  type: string; 
   active: boolean; 
   icon: any; 
   title: string; 
@@ -84,7 +82,6 @@ export default function NewBillModal({ onClose }: NewBillModalProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
             <div className="space-y-4">
               <OrderTypeButton 
-                type="dining" 
                 active={selectedType === 'dining'} 
                 title="Dine In"
                 description="Customer orders at counter, pays, sits at table"
@@ -110,7 +107,6 @@ export default function NewBillModal({ onClose }: NewBillModalProps) {
 
             <div className="space-y-4">
               <OrderTypeButton 
-                type="pickup" 
                 active={selectedType === 'pickup'} 
                 title="Pickup"
                 description="Order placed, kitchen starts, customer pays on collection"
@@ -136,7 +132,6 @@ export default function NewBillModal({ onClose }: NewBillModalProps) {
 
             <div className="space-y-4">
               <OrderTypeButton 
-                type="in-store" 
                 active={selectedType === 'in-store'} 
                 title="In Store"
                 description="Quick counter service — pays immediately, waits and collects"
@@ -152,7 +147,6 @@ export default function NewBillModal({ onClose }: NewBillModalProps) {
 
             <div className="space-y-4">
               <OrderTypeButton 
-                type="delivery" 
                 active={selectedType === 'delivery'} 
                 title="Delivery"
                 description="Driver delivers to address, payment on delivery"

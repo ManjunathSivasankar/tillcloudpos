@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   X, 
-  Search, 
   UserPlus, 
   User, 
-  CheckCircle2, 
-  Phone,
-  UserCheck
+  Phone
 } from 'lucide-react';
 
 interface CustomerModalProps {
@@ -16,7 +13,6 @@ interface CustomerModalProps {
 
 export default function CustomerModal({ onClose, onSelect }: CustomerModalProps) {
   const [searchTerm, setSearchTerm] = useState('9876543210');
-  const [showResults, setShowResults] = useState(true);
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">

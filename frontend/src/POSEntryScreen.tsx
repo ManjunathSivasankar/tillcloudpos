@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Bell, 
@@ -9,8 +9,7 @@ import {
   LayoutGrid, 
   UtensilsCrossed,
   CheckCircle2,
-  AlertCircle,
-  ChevronRight
+  AlertCircle
 } from 'lucide-react';
 import NewBillModal from './components/NewBillModal';
 

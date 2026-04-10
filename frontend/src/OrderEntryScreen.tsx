@@ -1,10 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Bell, 
   HelpCircle, 
   LogOut, 
-  Search, 
   Plus, 
   ShoppingBag, 
   LayoutGrid, 
@@ -14,7 +13,6 @@ import {
   Users,
   CreditCard,
   Split,
-  ChevronRight,
   Send
 } from 'lucide-react';
 import { usePosCart } from './context/PosCartContext';
@@ -26,7 +24,7 @@ export default function OrderEntryScreen() {
   const type = searchParams.get('type') || 'dining';
   const detail = searchParams.get('detail') || '';
   
-  const { menuItems, billItems, totalItems, billTotal, addItemToBill, removeItem, updateQuantity, isLoading } = usePosCart();
+  const { menuItems, billItems, billTotal, addItemToBill, removeItem } = usePosCart();
   const [selectedCategory, setSelectedCategory] = useState('Mains');
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customer, setCustomer] = useState<{name: string, id: string} | null>(null);
